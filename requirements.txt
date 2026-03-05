@@ -1,0 +1,14 @@
+torch
+torchvision
+numpy
+pandas
+opencv-python
+pymupdf
+transformers
+accelerate
+scipy
+streamlit
+pillow
+paddleocr
+paddlepaddle
+reportlab

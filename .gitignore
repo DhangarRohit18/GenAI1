@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project specific
+data/temp_images/
+data/input_notes.pdf
+ocr_debug.txt
+_write_llm.py
+
+# Models
+.paddlex/
+.paddleocr/
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
