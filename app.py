@@ -418,24 +418,38 @@ with tabs[1]:
             if uploaded_file is not None:
                 st.session_state.active_filename = uploaded_file.name
                 
-                # Immediate processing button
-                if st.button("🚀 Process & Index Document", type="primary", use_container_width=True):
+                if st.button("🚀 Start Neural Processing", type="primary", use_container_width=True):
                     try:
-                        with st.status("🛠 Pipeline: Building Knowledge Vault...", expanded=True) as status:
-                            st.write("💾 Saving file contents...")
+                        with st.status("🧠 **NoteVault Engine: Initiating Deep Analysis...**", expanded=True) as status:
+                            st.markdown("### 🛠 **Processing Pipeline**")
+                            
+                            st.write("📂 **[STAGE 1]** Securely caching document to local Vault...")
                             temp_path = "data/input_notes.pdf"
                             with open(temp_path, "wb") as f:
                                 f.write(uploaded_file.getbuffer())
                             
-                            st.write("📸 Page Generation...")
+                            st.write("📷 **[STAGE 2]** Generating high-fidelity note images...")
                             from preprocessing import pdf_to_images
                             pdf_to_images(temp_path)
                             
-                            st.write("👁️ Running OCR (this may take a minute)...")
-                            st.session_state.engine.process_pdf(temp_path)
+                            st.write("👁️ **[STAGE 3]** Deploying OCR & Neural Extraction...")
+                            # High Impact Progress UI
+                            progress_placeholder = st.empty()
+                            ocr_progress = st.progress(0)
                             
+                            for current, total in st.session_state.engine.process_pdf(temp_path):
+                                pct = int((current / total) * 100)
+                                ocr_progress.progress(pct)
+                                progress_placeholder.markdown(f"""
+                                    <div style='background: rgba(74, 108, 247, 0.1); padding: 10px; border-radius: 8px; border-left: 5px solid #4A6CF7;'>
+                                        <strong>Extraction Progress:</strong> Page {current} of {total} <br>
+                                        <small style='color: var(--text-secondary);'>Analyzing handwriting patterns and intent...</small>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            
+                            st.write("📐 **[STAGE 4]** Finalizing Vector Index & Similarity Mapping...")
                             st.session_state.processed = True
-                            status.update(label="✅ Ready!", state="complete", expanded=False)
+                            status.update(label="🚀 **Neural Analysis Complete!**", state="complete", expanded=False)
                         st.rerun()
                     except Exception as e:
                         st.error(f"Analysis Failed: {str(e)}")

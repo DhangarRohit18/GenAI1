@@ -45,13 +45,15 @@ class NoteVaultScratchEngine:
             self.llm.set_model(model_id)
 
     def process_pdf(self, pdf_path):
-        """Full pipeline: PDF -> OCR -> TF-IDF fitting (training) -> Indexing."""
+        """Full pipeline: PDF -> OCR -> Indexing. Yields (current, total) for progress tracking."""
         self.load_ocr()
         image_paths = pdf_to_images(pdf_path)
+        total_pages = len(image_paths)
         all_chunks = []
         all_page_nums = []
 
         for i, img_path in enumerate(image_paths):
+            yield (i + 1, total_pages)
             text, _ = self.ocr_manager.extract_text(img_path)
             
             # Semantic chunking (Simple period-based)
@@ -64,7 +66,6 @@ class NoteVaultScratchEngine:
 
         # "TRAIN" the TF-IDF model on these specific notes
         self.vector_engine.index_notes(all_chunks, all_page_nums)
-        return " ".join(all_chunks)
 
     def ask(self, question):
         """Retrieval + generation with confidence scoring."""
