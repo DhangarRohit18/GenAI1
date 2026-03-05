@@ -2,14 +2,12 @@ import requests
 
 OLLAMA_BASE_URL = 'http://localhost:11434'
 
-
 def _ollama_is_running():
     try:
         r = requests.get(f'{OLLAMA_BASE_URL}/api/tags', timeout=3)
         return r.status_code == 200
     except Exception:
         return False
-
 
 def _ollama_model_available(model_name):
     try:
@@ -21,21 +19,13 @@ def _ollama_model_available(model_name):
     except Exception:
         return False
 
-
 class LocalLLMScratch:
-    '''
-    Dual-backend LLM interface:
-      1. Ollama (primary)        - fast, supports mistral/llama3/phi3/gemma2
-      2. Transformers (fallback) - uses TinyLlama locally if Ollama not installed
-    '''
-
     def __init__(self, model_id='mistral'):
         self.model_id = model_id
         self.backend = 'ollama' if _ollama_is_running() else 'transformers'
         self._hf_model = None
         self._hf_tokenizer = None
         self._device = 'cpu'
-        print(f'[LLM] Backend: {self.backend.upper()} | Model: {model_id}')
 
     @property
     def backend_info(self):

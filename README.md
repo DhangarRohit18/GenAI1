@@ -1,45 +1,87 @@
-# NoteVault AI — Gen AI Hackathon 2026
+# 📝 NoteVault AI
+### Professional Handwritten Notes Study Assistant — Gen AI Hackathon 2026
 
-NoteVault AI is a **100% offline**, personal study assistant designed to convert handwritten notes into a searchable knowledge base. It uses custom "from-scratch" mathematical components and local neural models to ensure privacy and speed.
+NoteVault AI is a high-performance, **privacy-first** personal study assistant. It transforms messy handwritten notes into an interactive, AI-powered knowledge base — operating entirely **offline**.
 
-## 🚀 Key Features
-- **Offline OCR:** Extracts text from handwritten or typed PDF notes using PaddleOCR.
-- **Visual Pipeline:** Real-time tracking of processing stages (PDF → Image → OCR → Vector Index).
-- **From-Scratch Vector Engine:** Uses TF-IDF and Cosine Similarity implemented in NumPy for semantic search.
-- **Local LLM Integration:** Powered by **Mistral 7B via Ollama** (with TinyLlama fallback) for answering study questions.
-- **Study Report Generation:** Export your chat history and knowledge insights into a professional PDF report.
+---
 
-## 🛠 Tech Stack
-- **Frontend:** Streamlit
-- **OCR:** PaddleOCR (Mobile v5 Models)
-- **Math/Vector:** NumPy (TF-IDF, Cosine Similarity)
-- **LLM:** Ollama (Mistral / Llama3)
-- **PDF Processing:** PyMuPDF (fitz), OpenCV, ReportLab
+## 🏗 System Architecture & Flow
 
-## 📦 Installation & Setup
+```mermaid
+graph TD
+    User([User]) -->|Upload PDF| Vault[Vault Tab]
+    Vault -->|PDF to Images| PDF_Proc[Preprocessing - PyMuPDF]
+    PDF_Proc -->|OCR Extraction| OCR_Engine[PaddleOCR v5 Mobile]
+    OCR_Engine -->|Text Chunks| Chunking[Semantic Chunking]
+    Chunking -->|Vector Training| Vector_Engine[TF-IDF Vector Engine]
+    
+    User -->|Question| Chat[Study AI Tab]
+    Chat -->|Search| Vector_Engine
+    Vector_Engine -->|Relevant Context| LLM[LLM Backend - Ollama/Mistral]
+    LLM -->|Answer| Chat
+    
+    User -->|Practice| Practice[Practice Tab]
+    Practice -->|Generate Quiz| LLM
+    Practice -->|Extract Flashcards| LLM
+    
+    User -->|Generate Report| Report[ReportLab Engine]
+    Report -->|Export PDF| Download([PDF Download])
+```
 
-### 1. Requirements
-Ensure you have Python 3.10+ installed.
+---
 
+## 🌟 Core Innovations
+
+### 🧠 Neural OCR Pipeline
+Uses **PaddleOCR v5 Mobile** optimized for CPU efficiency. It identifies handwriting patterns and extracts text with spatial awareness, preserving the context of your original notes.
+
+### 📐 Mathematical Vector Engine (Built from Scratch)
+Unlike typical apps using external databases, NoteVault AI features a custom **TF-IDF Vectorizer** and **Cosine Similarity Matrix** built entirely in NumPy. This provides instant, accurate retrieval without any external dependencies.
+
+### 💬 Deep Context RAG
+Implements a sophisticated **Retrieval-Augmented Generation (RAG)** pipeline. It calculates a "Confidence Score" for every answer by analyzing vector distance and semantic alignment, ensuring the AI only speaks from your notes.
+
+---
+
+## 🛠 Technology Stack
+
+| Layer | Technology |
+|---|---|
+| **Interface** | Streamlit (High-Impact Dashboard) |
+| **Logic** | Python 3.12 |
+| **OCR** | PaddleOCR (Deep Learning Mobile Models) |
+| **Search** | Custom TF-IDF & NumPy Vector Math |
+| **LLM** | Ollama (Mistral 7B / Llama 3) |
+| **PDF Engine** | PyMuPDF (fitz) |
+| **Reporting** | ReportLab |
+
+---
+
+## 📦 Getting Started
+
+### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Ollama (Optional but Recommended)
-For the best experience, install Ollama:
-1. Download from [ollama.com](https://ollama.com/download).
-2. Run `ollama pull mistral`.
+### 2. Configure Local LLM (Recommended)
+Install [Ollama](https://ollama.com) and pull your preferred model:
+```bash
+ollama pull mistral
+```
 
-### 3. Run the Application
+### 3. Launch NoteVault
 ```bash
 streamlit run app.py
 ```
 
-## 📝 Usage
-1. Upload a PDF of your handwritten notes.
-2. Wait for the 7-stage pipeline to complete.
-3. Start asking questions in the chat!
-4. Download your study report at the end of the session.
+---
+
+## 📝 How to Use
+1. **Vault:** Upload your handwritten PDF. Watch the real-time processing pipeline analyze every stroke.
+2. **Study AI:** Ask questions about specific formulas, dates, or concepts in your notes.
+3. **Practice:** Generate instant Quizzes or Flashcards to test your retention.
+4. **Session:** Export a professional summary of your entire study session.
 
 ---
-*Created for GenHack 2026*
+*Developed for GenHack 2026*

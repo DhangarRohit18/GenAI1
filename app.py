@@ -7,7 +7,6 @@ import base64
 from rag_engine_scratch import NoteVaultScratchEngine as NoteVaultEngine
 from report_generator import generate_pdf_report, generate_transcription_pdf
 
-# --- CONFIG & THEME ---
 os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 if not os.path.exists("data"):
     try:
@@ -17,19 +16,17 @@ if not os.path.exists("data"):
         
 st.set_page_config(page_title="NoteVault AI", page_icon="📝", layout="wide", initial_sidebar_state="expanded")
 
-# --- CUSTOM CSS (Production Grade) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Permanent Dark Mode Layout Colors */
     :root {{
-        --bg-color: #111827;           /* Deep Midnight */
-        --sidebar-bg: #1F2937;        /* Dark Slate */
-        --text-color: #F9FAFB;        /* Off-White */
-        --text-secondary: #9CA3AF;     /* Gray */
-        --card-bg: #1F2937;           /* Slightly Lighter Slate */
-        --border-color: #374151;       /* Subtle Border */
+        --bg-color: #111827;
+        --sidebar-bg: #1F2937;
+        --text-color: #F9FAFB;
+        --text-secondary: #9CA3AF;
+        --card-bg: #1F2937;
+        --border-color: #374151;
     }}
 
     html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
@@ -41,7 +38,6 @@ st.markdown(f"""
         background-color: var(--bg-color) !important;
     }}
     
-    /* Sidebar Styling */
     section[data-testid="stSidebar"] {{
         background-color: var(--sidebar-bg) !important;
         border-right: 1px solid var(--border-color);
@@ -58,7 +54,6 @@ st.markdown(f"""
         gap: 10px;
     }}
     
-    /* Responsive App Container */
     [data-testid="stAppViewContainer"] {{
         background-color: var(--bg-color) !important;
         padding-bottom: 2rem;
@@ -70,7 +65,6 @@ st.markdown(f"""
         padding: 0.75rem 1.5rem;
     }}
     
-    /* Horizontal Workspace Flow */
     .workspace-split {{
         display: flex;
         gap: 1.5rem;
@@ -87,7 +81,6 @@ st.markdown(f"""
         flex: 1;
     }}
     
-    /* Stats Grid (Responsive) */
     .stats-container {{
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -125,7 +118,6 @@ st.markdown(f"""
         letter-spacing: 0.025em;
     }}
     
-    /* Chat Interface (Compatibility & Wrapping) */
     .chat-container {{
         display: flex;
         flex-direction: column;
@@ -160,7 +152,6 @@ st.markdown(f"""
         border-bottom-left-radius: 4px;
     }}
     
-    /* Media Queries for different viewports */
     @media (max-width: 992px) {{
         .chat-bubble {{ max-width: 95%; }}
         .stats-container {{ grid-template-columns: 1fr 1fr; }}
@@ -179,7 +170,6 @@ st.markdown(f"""
         }}
     }}
     
-    /* Premium Tab Styling */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 24px;
         background-color: transparent !important;
@@ -238,7 +228,6 @@ st.markdown(f"""
     .conf-med {{ background: #FEF3C7; color: #92400E; }}
     .conf-low {{ background: #FEE2E2; color: #991B1B; }}
     
-    /* Flashcards Compatibility */
     .flashcard-main {{
         background: var(--card-bg);
         min-height: 280px;
@@ -274,31 +263,26 @@ st.markdown(f"""
         line-height: 1.6;
     }}
     
-    /* Custom Buttons */
     .stButton>button {{
         border-radius: 8px !important;
         font-weight: 500 !important;
         transition: all 0.2s !important;
     }}
 
-    /* Streamlit Widget Overrides for Dark Mode */
     div[data-testid="stExpander"] {{
         background-color: var(--card-bg) !important;
         border: 1px solid var(--border-color) !important;
     }}
     
-    /* Fix for status boxes visibility */
     div[data-testid="stNotification"] p {{
         color: #111827 !important;
     }}
     
-    /* Hide default streamlit elements */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-# --- UTILS ---
 def _check_ollama():
     try:
         r = requests.get("http://localhost:11434/api/tags", timeout=2)
@@ -309,7 +293,6 @@ def _check_ollama():
     except Exception:
         return False, []
 
-# --- INITIALIZATION ---
 try:
     if 'engine' not in st.session_state:
         st.session_state.engine = NoteVaultEngine()
@@ -340,38 +323,27 @@ if 'dark_mode' not in st.session_state:
 if 'active_filename' not in st.session_state:
     st.session_state.active_filename = None
 
-# --- SIDEBAR GLOBAL ACTIONS ---
 with st.sidebar:
     st.markdown('<div class="sidebar-brand"><span>📝</span> NoteVault AI</div>', unsafe_allow_html=True)
     st.info("System optimized for handwritten notes. Use the tabs to navigate your study vault.")
-    
     st.divider()
-    
-    # Global Status Indicator
     ollama_running, _ = _check_ollama()
     if ollama_running:
         st.write("🟢 **Core Engine:** Online")
     else:
         st.write("🔴 **Core Engine:** Local Only")
-    
     st.divider()
-    
-    # Quick Actions
     if st.button("🗑 Reset Session", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
-# --- MAIN APP INTERFACE (TAB BASED) ---
 tabs = st.tabs(["📊 Dashboard", "📂 Vault", "💬 Study AI", "🎯 Practice", "📄 Session"])
 
 with tabs[0]:
     c_main, c_side = st.columns([3, 1.2])
-    
     with c_main:
         st.title("Hi, Scholar! 👋")
         st.markdown("Your neural vault is active and ready.")
-        
-        # Stats Grid - More Compact
         st.markdown('<div class="stats-container">', unsafe_allow_html=True)
         s1, s2, s3 = st.columns(3)
         with s1:
@@ -381,62 +353,46 @@ with tabs[0]:
         with s3:
             st.markdown(f'<div class="stats-card"><div class="stats-value">{len(st.session_state.flashcards)}</div><div class="stats-label">Cards</div></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-        
         if st.session_state.processed:
             st.success(f"**Live Document:** {st.session_state.active_filename}")
         else:
             st.warning("No notes uploaded yet. Check the **Vault** tab.")
-            
     with c_side:
         st.markdown("### ⚡ Quick Actions")
         if st.button("💬 Jump to Chat", use_container_width=True):
-            # We'd need state triggers for tab switching, 
-            # for now let's use labels
             st.info("Switch to the 'Study AI' tab above.")
         if st.button("🎯 Take a Quiz", use_container_width=True):
             st.info("Switch to the 'Practice' tab above.")
 
 with tabs[1]:
     v_col1, v_col2 = st.columns([1, 1.5])
-    
     with v_col1:
         st.subheader("🛠 Vault Control")
-        
-        # Reset Logic
         if st.session_state.get('reset_vault'):
             st.session_state.processed = False
             st.session_state.active_filename = None
             st.session_state.chat_history = []
             st.session_state.reset_vault = False
             st.rerun()
-
         if not st.session_state.processed:
             st.markdown("Select a handwritten PDF to begin analysis.")
-            # Use a more prominent label
             uploaded_file = st.file_uploader("Drop PDF here", type=["pdf"], key="pdf_main_uploader")
-            
             if uploaded_file is not None:
                 st.session_state.active_filename = uploaded_file.name
-                
                 if st.button("🚀 Start Neural Processing", type="primary", use_container_width=True):
                     try:
                         with st.status("🧠 **NoteVault Engine: Initiating Deep Analysis...**", expanded=True) as status:
                             st.markdown("### 🛠 **Processing Pipeline**")
-                            
                             st.write("📂 **[STAGE 1]** Securely caching document to local Vault...")
                             temp_path = "data/input_notes.pdf"
                             with open(temp_path, "wb") as f:
                                 f.write(uploaded_file.getbuffer())
-                            
                             st.write("📷 **[STAGE 2]** Generating high-fidelity note images...")
                             from preprocessing import pdf_to_images
                             pdf_to_images(temp_path)
-                            
                             st.write("👁️ **[STAGE 3]** Deploying OCR & Neural Extraction...")
-                            # High Impact Progress UI
                             progress_placeholder = st.empty()
                             ocr_progress = st.progress(0)
-                            
                             for current, total in st.session_state.engine.process_pdf(temp_path):
                                 pct = int((current / total) * 100)
                                 ocr_progress.progress(pct)
@@ -446,7 +402,6 @@ with tabs[1]:
                                         <small style='color: var(--text-secondary);'>Analyzing handwriting patterns and intent...</small>
                                     </div>
                                 """, unsafe_allow_html=True)
-                            
                             st.write("📐 **[STAGE 4]** Finalizing Vector Index & Similarity Mapping...")
                             st.session_state.processed = True
                             status.update(label="🚀 **Neural Analysis Complete!**", state="complete", expanded=False)
@@ -459,7 +414,6 @@ with tabs[1]:
             if st.button("📁 Load Different File", use_container_width=True):
                 st.session_state.reset_vault = True
                 st.rerun()
-        
         st.divider()
         if st.session_state.processed:
             st.markdown("#### 📖 Page Selector")
@@ -469,7 +423,6 @@ with tabs[1]:
                 st.session_state.view_page = st.number_input("Page", 1, num_pages, st.session_state.view_page)
             with p_col2:
                 zoom = st.slider("Zoom", 400, 1600, 900)
-
     with v_col2:
         st.subheader("🖼 Document Preview")
         if st.session_state.processed:
@@ -500,7 +453,6 @@ with tabs[2]:
                 with st.expander("📚 Sources"):
                     for s in chat['sources']:
                         st.markdown(f"**Page {s['page']}**: {s['text']}")
-
         if prompt := st.chat_input("Ask anything about your notes..."):
             st.session_state.engine.load_llm()
             answer, sources, confidence, ref_text = st.session_state.engine.ask(prompt)
@@ -512,7 +464,6 @@ with tabs[2]:
 
 with tabs[3]:
     pt1, pt2 = st.tabs(["🎯 Quiz", "🗂 Flashcards"])
-    
     with pt1:
         st.subheader("🎯 Test Your Knowledge")
         if not st.session_state.processed:
@@ -521,7 +472,6 @@ with tabs[3]:
             if st.button("✨ Generate Quiz", key="gen_q", type="primary"):
                 with st.spinner("Generating..."):
                     raw = st.session_state.engine.generate_quiz()
-                    # (Parser logic condensed)
                     questions = []
                     for b in raw.split("---"):
                         lines = [l.strip() for l in b.strip().split("\n") if l.strip()]
@@ -538,7 +488,6 @@ with tabs[3]:
                     st.session_state.quiz_data = questions
                     st.session_state.quiz_results = {}
                     st.rerun()
-            
             if st.session_state.quiz_data:
                 for i, q in enumerate(st.session_state.quiz_data):
                     st.markdown(f"**Q{i+1}: {q['q']}**")
@@ -561,7 +510,6 @@ with tabs[3]:
                 if st.button("✨ Generate Cards", key="gen_f"):
                     st.session_state.flashcards = st.session_state.engine.extract_flashcards()
                     st.rerun()
-            
             if st.session_state.flashcards:
                 card = st.session_state.flashcards[st.session_state.fc_index]
                 st.markdown(f"""

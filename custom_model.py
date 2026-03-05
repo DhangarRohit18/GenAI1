@@ -3,11 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class HandwritingCNN(nn.Module):
-    """
-    A custom CNN from scratch for character/digit recognition.
-    Used for specific handwriting classification tasks.
-    """
-    def __init__(self, num_classes=62): # 10 digits + 26 upper + 26 lower
+    def __init__(self, num_classes=62):
         super(HandwritingCNN, self).__init__()
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
@@ -18,10 +14,9 @@ class HandwritingCNN(nn.Module):
         self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
-        # Input shape: [batch, 1, 28, 28]
         x = self.pool(F.relu(self.conv1(x)))
         x = self.pool(F.relu(self.conv2(x)))
-        x = x.view(-1, 64 * 7 * 7) # Flatten
+        x = x.view(-1, 64 * 7 * 7)
         x = self.dropout1(x)
         x = F.relu(self.fc1(x))
         x = self.dropout2(x)
@@ -29,10 +24,8 @@ class HandwritingCNN(nn.Module):
         return x
 
 def train_model(model, train_loader, epochs=5, lr=0.001):
-    """Training loop for our custom OCR model."""
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    
     model.train()
     for epoch in range(epochs):
         running_loss = 0.0
@@ -44,5 +37,4 @@ def train_model(model, train_loader, epochs=5, lr=0.001):
             optimizer.step()
             running_loss += loss.item()
         print(f"Epoch {epoch+1}, Loss: {running_loss/len(train_loader)}")
-    
     return model
