@@ -6,7 +6,7 @@ import requests
 os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
 
 from rag_engine_scratch import NoteVaultScratchEngine as NoteVaultEngine
-from report_generator import generate_pdf_report
+from report_generator import generate_pdf_report, generate_transcription_pdf
 import time
 
 def _check_ollama():
@@ -311,7 +311,22 @@ with col1:
                     st.download_button(
                         "⬇️ Download PDF Report", f,
                         file_name="NoteVault_Study_Report.pdf",
-                        mime="application/pdf"
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+
+        if st.button("📝 Download Extracted Notes (PDF)", use_container_width=True):
+            if not st.session_state.engine.processed_pages:
+                st.warning("No notes processed yet.")
+            else:
+                trans_path = generate_transcription_pdf(st.session_state.engine.processed_pages)
+                with open(trans_path, "rb") as f:
+                    st.download_button(
+                        "⬇️ Click to Download Transcription", 
+                        f,
+                        file_name="Extracted_Notes.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
                     )
 
 with col2:

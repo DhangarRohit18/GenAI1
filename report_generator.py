@@ -1,6 +1,9 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 import datetime
+import os
 
 def generate_pdf_report(history, output_path="data/study_report.pdf"):
     """
@@ -37,4 +40,37 @@ def generate_pdf_report(history, output_path="data/study_report.pdf"):
         y -= 40
         
     c.save()
+    return output_path
+
+def generate_transcription_pdf(processed_pages, output_path="data/transcribed_notes.pdf"):
+    """
+    Creates a formatted PDF of all extracted text from the notes.
+    processed_pages: list of {page, text}
+    """
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    doc = SimpleDocTemplate(output_path, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Title
+    story.append(Paragraph("NoteVault AI: Transcribed Notes", styles['Title']))
+    story.append(Paragraph(f"Extracted on: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+    story.append(Spacer(1, 20))
+
+    for page in processed_pages:
+        # Page Header
+        story.append(Paragraph(f"--- Page {page['page']} ---", styles['Heading2']))
+        story.append(Spacer(1, 10))
+        
+        # Extracted Text
+        text = page['text'].replace('\n', '<br/>')  # Basic formatting
+        if not text.strip():
+            text = "<i>[No text extracted from this page]</i>"
+        
+        story.append(Paragraph(text, styles['Normal']))
+        story.append(Spacer(1, 20))
+
+    doc.build(story)
     return output_path
