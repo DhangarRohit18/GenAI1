@@ -171,33 +171,49 @@ st.markdown(f"""
     }}
     
     .stTabs [data-baseweb="tab-list"] {{
-        gap: 50px;
+        gap: 60px !important;
         background-color: transparent !important;
-        padding: 0 1rem;
-        border-bottom: 2px solid var(--border-color);
-        margin-bottom: 3.5rem;
+        padding: 1rem 2rem !important;
+        border-bottom: 3px solid var(--border-color) !important;
+        margin-bottom: 4rem !important;
+        display: flex !important;
+        justify-content: center !important;
     }}
 
     .stTabs [data-baseweb="tab"] {{
-        height: 100px;
-        white-space: pre;
+        height: 120px !important;
+        min-width: 250px !important;
+        white-space: pre !important;
         background-color: transparent !important;
         border: none !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }}
+
+    .stTabs [data-baseweb="tab"] p {{
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
         color: var(--text-secondary) !important;
-        font-weight: 700 !important;
-        font-size: 28px !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        margin: 0 !important;
     }}
 
     .stTabs [data-baseweb="tab"]:hover {{
+        transform: scale(1.1) translateY(-5px) !important;
+    }}
+    
+    .stTabs [data-baseweb="tab"]:hover p {{
         color: #4A6CF7 !important;
-        transform: scale(1.05);
     }}
 
-    .stTabs [aria-selected="true"] {{
+    .stTabs [aria-selected="true"] p {{
         color: #4A6CF7 !important;
-        border-bottom: 3px solid #4A6CF7 !important;
-        font-weight: 700 !important;
+        font-weight: 900 !important;
+    }}
+    
+    .stTabs [aria-selected="true"] {{
+        border-bottom: 5px solid #4A6CF7 !important;
     }}
     
     .user-msg {{
