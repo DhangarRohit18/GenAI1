@@ -8,7 +8,6 @@ NoteVault AI is a **100% offline**, personal study assistant designed to convert
 - **From-Scratch Vector Engine:** Uses TF-IDF and Cosine Similarity implemented in NumPy for semantic search.
 - **Local LLM Integration:** Powered by **Mistral 7B via Ollama** (with TinyLlama fallback) for answering study questions.
 - **Study Report Generation:** Export your chat history and knowledge insights into a professional PDF report.
-- **Custom CNN Training:** A demo of a neural network built with PyTorch to show digit recognition capabilities.
 
 ## 🛠 Tech Stack
 - **Frontend:** Streamlit

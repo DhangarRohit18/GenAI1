@@ -126,28 +126,28 @@ Answer:"""
         return int(max(min(confidence, 99), 10))
 
     def generate_quiz(self):
-        """Generates 5 MCQs based on the notes."""
-        if not self.processed_pages: return "No notes to quiz on."
+        """Generates 5 MCQs based on the notes with a strict parseable format."""
+        if not self.processed_pages: return ""
         
-        full_text = " ".join([p['text'] for p in self.processed_pages])[:4000]
+        full_text = " ".join([p['text'] for p in self.processed_pages])[:4500]
         self.load_llm()
         
         prompt = f"""<|system|>
 You are a professor. Create a 5-question multiple choice quiz based ONLY on the provided notes.
-Each question MUST have 4 options (A, B, C, D).
-Format:
-Q1: [Question]
-A) [Option]
-B) [Option]
-C) [Option]
-D) [Option]
-Correct: [Letter]
+Each question MUST have exactly 4 options (A, B, C, D) and one correct letter.
+STRICT FORMAT:
+Q: [Question]
+A) [Option 1]
+B) [Option 2]
+C) [Option 3]
+D) [Option 4]
+Correct: [A/B/C/D]
 ---</s>
 <|user|>
 Notes: {full_text}</s>
 <|assistant|>
-Quiz:"""
-        return self.llm.generate(prompt, max_new_tokens=1000)
+"""
+        return self.llm.generate(prompt, max_new_tokens=1200)
 
     def extract_flashcards(self):
         """Extracts key terms and definitions for flashcards."""

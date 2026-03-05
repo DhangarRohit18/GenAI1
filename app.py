@@ -1,14 +1,304 @@
 import streamlit as st
 import os
 import requests
-
-# Skip the slow HuggingFace connectivity check every launch
-os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
-
+import time
+import datetime
+import base64
 from rag_engine_scratch import NoteVaultScratchEngine as NoteVaultEngine
 from report_generator import generate_pdf_report, generate_transcription_pdf
-import time
 
+# --- CONFIG & THEME ---
+os.environ["PADDLE_PDX_DISABLE_MODEL_SOURCE_CHECK"] = "True"
+if not os.path.exists("data"):
+    try:
+        os.makedirs("data")
+    except Exception:
+        pass
+        
+st.set_page_config(page_title="NoteVault AI", page_icon="📝", layout="wide", initial_sidebar_state="expanded")
+
+# --- CUSTOM CSS (Production Grade) ---
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Permanent Dark Mode Layout Colors */
+    :root {{
+        --bg-color: #111827;           /* Deep Midnight */
+        --sidebar-bg: #1F2937;        /* Dark Slate */
+        --text-color: #F9FAFB;        /* Off-White */
+        --text-secondary: #9CA3AF;     /* Gray */
+        --card-bg: #1F2937;           /* Slightly Lighter Slate */
+        --border-color: #374151;       /* Subtle Border */
+    }}
+
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {{
+        background-color: var(--bg-color) !important;
+        color: var(--text-color);
+    }}
+    
+    [data-testid="stAppViewContainer"] {{
+        background-color: var(--bg-color) !important;
+    }}
+    
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {{
+        background-color: var(--sidebar-bg) !important;
+        border-right: 1px solid var(--border-color);
+    }}
+    
+    .sidebar-brand {{
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #4A6CF7;
+        margin-bottom: 2rem;
+        padding: 0 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }}
+    
+    /* Responsive App Container */
+    [data-testid="stAppViewContainer"] {{
+        background-color: var(--bg-color) !important;
+        padding-bottom: 2rem;
+    }}
+    
+    .main-container {{
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 0.75rem 1.5rem;
+    }}
+    
+    /* Horizontal Workspace Flow */
+    .workspace-split {{
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-start;
+    }}
+    
+    .workspace-sidebar {{
+        flex: 0 0 350px;
+        position: sticky;
+        top: 1rem;
+    }}
+    
+    .workspace-main {{
+        flex: 1;
+    }}
+    
+    /* Stats Grid (Responsive) */
+    .stats-container {{
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin: 1.5rem 0;
+    }}
+    
+    .stats-card {{
+        background: var(--card-bg);
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        text-align: left;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }}
+    
+    .stats-card:hover {{
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }}
+    
+    .stats-value {{
+        font-size: 2rem;
+        font-weight: 800;
+        color: #4A6CF7;
+        margin-bottom: 0.25rem;
+    }}
+    
+    .stats-label {{
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }}
+    
+    /* Chat Interface (Compatibility & Wrapping) */
+    .chat-container {{
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        padding: 1rem 0;
+        max-width: 900px;
+        margin: 0 auto;
+    }}
+    
+    .chat-bubble {{
+        padding: 1rem 1.5rem;
+        border-radius: 1.25rem;
+        line-height: 1.6;
+        font-size: 1rem;
+        max-width: 85%;
+        word-wrap: break-word;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }}
+    
+    .user-msg {{
+        align-self: flex-end;
+        background-color: #4A6CF7;
+        color: white !important;
+        border-bottom-right-radius: 4px;
+    }}
+    
+    .ai-msg {{
+        align-self: flex-start;
+        background-color: var(--card-bg);
+        color: var(--text-color) !important;
+        border: 1px solid var(--border-color);
+        border-bottom-left-radius: 4px;
+    }}
+    
+    /* Media Queries for different viewports */
+    @media (max-width: 992px) {{
+        .chat-bubble {{ max-width: 95%; }}
+        .stats-container {{ grid-template-columns: 1fr 1fr; }}
+    }}
+    
+    @media (max-width: 768px) {{
+        .stats-container {{ grid-template-columns: 1fr; }}
+        .sidebar-brand {{ font-size: 1.2rem; }}
+        .main-container {{ padding: 1rem; }}
+        .stTabs [data-baseweb="tab-list"] {{
+            gap: 10px !important;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            padding: 8px 12px !important;
+            font-size: 14px !important;
+        }}
+    }}
+    
+    /* Premium Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 24px;
+        background-color: transparent !important;
+        padding: 0 1rem;
+        border-bottom: 2px solid var(--border-color);
+        margin-bottom: 2rem;
+    }}
+
+    .stTabs [data-baseweb="tab"] {{
+        height: 50px;
+        white-space: pre;
+        background-color: transparent !important;
+        border: none !important;
+        color: var(--text-secondary) !important;
+        font-weight: 500 !important;
+        font-size: 16px !important;
+        transition: all 0.3s ease !important;
+    }}
+
+    .stTabs [data-baseweb="tab"]:hover {{
+        color: #4A6CF7 !important;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        color: #4A6CF7 !important;
+        border-bottom: 3px solid #4A6CF7 !important;
+        font-weight: 700 !important;
+    }}
+    
+    .user-msg {{
+        align-self: flex-end;
+        background-color: #4A6CF7;
+        color: #FFFFFF !important;
+        border-bottom-right-radius: 4px;
+    }}
+    
+    .ai-msg {{
+        align-self: flex-start;
+        background-color: var(--card-bg);
+        color: var(--text-color) !important;
+        border: 1px solid var(--border-color);
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }}
+    
+    .confidence-badge {{
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }}
+    
+    .conf-high {{ background: #D1FAE5; color: #065F46; }}
+    .conf-med {{ background: #FEF3C7; color: #92400E; }}
+    .conf-low {{ background: #FEE2E2; color: #991B1B; }}
+    
+    /* Flashcards Compatibility */
+    .flashcard-main {{
+        background: var(--card-bg);
+        min-height: 280px;
+        width: 100%;
+        max-width: 550px;
+        margin: 1.5rem auto;
+        perspective: 1000px;
+        cursor: pointer;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--border-color);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }}
+    
+    .flashcard-main:hover {{
+        transform: scale(1.02);
+    }}
+    
+    .flashcard-term {{
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #4A6CF7;
+    }}
+    
+    .flashcard-def {{
+        font-size: 1.1rem;
+        color: var(--text-color);
+        line-height: 1.6;
+    }}
+    
+    /* Custom Buttons */
+    .stButton>button {{
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        transition: all 0.2s !important;
+    }}
+
+    /* Streamlit Widget Overrides for Dark Mode */
+    div[data-testid="stExpander"] {{
+        background-color: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+    
+    /* Fix for status boxes visibility */
+    div[data-testid="stNotification"] p {{
+        color: #111827 !important;
+    }}
+    
+    /* Hide default streamlit elements */
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- UTILS ---
 def _check_ollama():
     try:
         r = requests.get("http://localhost:11434/api/tags", timeout=2)
@@ -19,430 +309,280 @@ def _check_ollama():
     except Exception:
         return False, []
 
-# Page Config
-st.set_page_config(page_title="NoteVault AI", page_icon="📝", layout="wide")
-
-# Custom CSS for Premium Look
-st.markdown("""
-    <style>
-    .main {
-        background-color: #0e1117;
-        color: #ffffff;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 5px;
-        height: 3em;
-        background-color: #4CAF50;
-        color: white;
-    }
-    .stTextInput>div>div>input {
-        background-color: #262730;
-        color: white;
-    }
-    .source-box {
-        background-color: #1e1e26;
-        padding: 10px;
-        border-radius: 5px;
-        margin-bottom: 5px;
-        border-left: 5px solid #4CAF50;
-    }
-    .confidence-meter {
-        float: right;
-        background: #333;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-    }
-    .flashcard {
-        background: #2D2D39;
-        padding: 20px;
-        border-radius: 15px;
-        border: 2px solid #4CAF50;
-        text-align: center;
-        min-height: 150px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        margin: 10px 0;
-    }
-    .ref-text {
-        font-size: 0.9em;
-        color: #aaa;
-        font-style: italic;
-        background: #25252d;
-        padding: 10px;
-        border-radius: 5px;
-        margin-top: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# Initialize Session State
-if 'engine' not in st.session_state:
-    with st.spinner("Preparing NoteVault Intelligence..."):
+# --- INITIALIZATION ---
+try:
+    if 'engine' not in st.session_state:
         st.session_state.engine = NoteVaultEngine()
-
+except Exception as e:
+    st.error(f"Critical System Error: Failed to initialize AI Engine. {e}")
+    st.info("Check if 'data' directory is writable and all dependencies are installed.")
+    st.stop()
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'processed' not in st.session_state:
     st.session_state.processed = False
 if 'quiz_data' not in st.session_state:
-    st.session_state.quiz_data = None
+    st.session_state.quiz_data = []
+if 'quiz_results' not in st.session_state:
+    st.session_state.quiz_results = {}
 if 'flashcards' not in st.session_state:
-    st.session_state.flashcards = None
+    st.session_state.flashcards = []
+if 'page' not in st.session_state:
+    st.session_state.page = "Dashboard"
+if 'fc_index' not in st.session_state:
+    st.session_state.fc_index = 0
+if 'fc_flipped' not in st.session_state:
+    st.session_state.fc_flipped = False
+if 'view_page' not in st.session_state:
+    st.session_state.view_page = 1
+if 'dark_mode' not in st.session_state:
+    st.session_state.dark_mode = True
+if 'active_filename' not in st.session_state:
+    st.session_state.active_filename = None
 
-# Sidebar
+# --- SIDEBAR GLOBAL ACTIONS ---
 with st.sidebar:
-    st.title("⚙️ NoteVault Settings")
+    st.markdown('<div class="sidebar-brand"><span>📝</span> NoteVault AI</div>', unsafe_allow_html=True)
+    st.info("System optimized for handwritten notes. Use the tabs to navigate your study vault.")
+    
     st.divider()
-
-    # --- Ollama Status ---
-    ollama_running, ollama_models = _check_ollama()
+    
+    # Global Status Indicator
+    ollama_running, _ = _check_ollama()
     if ollama_running:
-        st.success("🟢 Ollama: Running")
-        if ollama_models:
-            model_choice = st.selectbox(
-                "🤖 Ollama Model",
-                ollama_models,
-                help="Select which locally-pulled Ollama model to use."
-            )
-        else:
-            st.warning("No models pulled yet. Run: ollama pull mistral")
-            model_choice = "mistral"
+        st.write("🟢 **Core Engine:** Online")
     else:
-        st.warning("🔴 Ollama: Not running")
-        st.caption("Fallback: TinyLlama (transformers) will be used.")
-        st.code("ollama pull mistral", language="bash")
-        model_choice = "mistral"
-
-    # Wire model selection to engine
-    if st.session_state.get("engine") and st.session_state.engine.llm:
-        st.session_state.engine.llm.set_model(model_choice)
-
+        st.write("🔴 **Core Engine:** Local Only")
+    
     st.divider()
-    if st.session_state.get("processed"):
-        st.success("✅ PDF Loaded")
-        st.metric("Pages Processed", len(st.session_state.engine.processed_pages))
-        st.metric("Questions Asked", len(st.session_state.chat_history))
-        if st.session_state.engine.llm:
-            st.caption(f"LLM: {st.session_state.engine.llm.backend_info}")
-    else:
-        st.info("Upload a PDF to begin.")
-    st.divider()
-    if st.button("🔄 Reset Session", use_container_width=True):
-        st.session_state.chat_history = []
-        st.session_state.processed = False
-        st.session_state.engine = NoteVaultEngine()
+    
+    # Quick Actions
+    if st.button("🗑 Reset Session", use_container_width=True):
+        st.session_state.clear()
         st.rerun()
 
-# Layout
-col1, col2 = st.columns([1, 2])
+# --- MAIN APP INTERFACE (TAB BASED) ---
+tabs = st.tabs(["📊 Dashboard", "📂 Vault", "💬 Study AI", "🎯 Practice", "📄 Session"])
 
-with col1:
-    st.title("NoteVault AI")
-    st.subheader("Your Personal Offline Study Assistant")
+with tabs[0]:
+    c_main, c_side = st.columns([3, 1.2])
     
-    uploaded_file = st.file_uploader("Upload Handwritten Notes (PDF)", type="pdf")
-    
-    if uploaded_file and not st.session_state.processed:
-        import time
-
-        # ── Pipeline Stage Display ─────────────────────────────────────────
-        st.markdown("---")
-        st.markdown("### 🔄 Pipeline Progress")
-
-        STAGES = [
-            ("📄", "Stage 1", "PDF → Image Conversion",   "Splitting PDF pages into high-resolution images"),
-            ("🔍", "Stage 2", "Image Preprocessing",       "Enhancing contrast & correcting page tilt with OpenCV"),
-            ("✍️", "Stage 3", "Handwriting OCR",           "Extracting text from handwritten pages via PaddleOCR"),
-            ("✂️", "Stage 4", "Semantic Chunking",         "Breaking extracted text into searchable knowledge chunks"),
-            ("🧮", "Stage 5", "TF-IDF Model Training",     "Fitting custom TF-IDF vocabulary on your specific notes"),
-            ("📐", "Stage 6", "Vector Indexing",            "Building NumPy cosine-similarity matrix for fast search"),
-            ("✅", "Stage 7", "Ready",                      "Your notes are indexed and ready for questions"),
-        ]
-
-        # Render stage placeholders
-        stage_placeholders = []
-        for icon, label, title, desc in STAGES:
-            col_icon, col_text = st.columns([1, 8])
-            with col_icon:
-                p_icon = st.empty()
-                p_icon.markdown(f"<div style='font-size:28px;text-align:center'>⏳</div>", unsafe_allow_html=True)
-            with col_text:
-                p_title = st.empty()
-                p_title.markdown(f"**{label}: {title}** — <span style='color:#888'>{desc}</span>", unsafe_allow_html=True)
-            stage_placeholders.append((p_icon, p_title, icon, label, title, desc))
-
-        progress_bar = st.progress(0, text="Waiting to start...")
-        result_area  = st.empty()
-        pipeline_failed = False
-
-        def mark_stage(idx, running=True):
-            p_icon, p_title, icon, label, title, desc = stage_placeholders[idx]
-            if running:
-                p_icon.markdown(f"<div style='font-size:28px;text-align:center'>🔄</div>", unsafe_allow_html=True)
-                p_title.markdown(f"**{label}: {title}** — <span style='color:#f0a500'>*Running…*</span>", unsafe_allow_html=True)
-            else:
-                p_icon.markdown(f"<div style='font-size:28px;text-align:center'>{icon}</div>", unsafe_allow_html=True)
-                p_title.markdown(f"**{label}: {title}** — <span style='color:#4CAF50'>✔ Done</span>", unsafe_allow_html=True)
-            pct = int(((idx + (0 if running else 1)) / len(STAGES)) * 100)
-            progress_bar.progress(pct, text=f"{label}: {title}…" if running else f"✅ {label} complete")
-
-        def mark_stage_error(idx, error):
-            import traceback
-            p_icon, p_title, icon, label, title, desc = stage_placeholders[idx]
-            p_icon.markdown("<div style='font-size:28px;text-align:center'>❌</div>", unsafe_allow_html=True)
-            p_title.markdown(
-                f"**{label}: {title}** — <span style='color:#ff4444'>❌ FAILED</span>",
-                unsafe_allow_html=True
-            )
-            progress_bar.progress(
-                int(((idx) / len(STAGES)) * 100),
-                text=f"❌ {label} failed — see error below"
-            )
-            # Show a detailed error card
-            st.markdown(
-                f"""<div style='background:#2a0a0a;border-left:5px solid #ff4444;
-                    padding:12px;border-radius:6px;margin:6px 0'>
-                    <b style='color:#ff6666'>⚠ Error in {label}: {title}</b><br>
-                    <code style='color:#ffaaaa'>{type(error).__name__}: {str(error)}</code>
-                </div>""",
-                unsafe_allow_html=True
-            )
-            with st.expander(f"📋 Full Traceback — {label}: {title}", expanded=True):
-                st.code(traceback.format_exc(), language="python")
-
-        # ── Stage 1: Save PDF ─────────────────────────────────────────────
-        mark_stage(0, running=True)
-        try:
-            if not os.path.exists("data"):
-                os.makedirs("data")
-            temp_path = "data/input_notes.pdf"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            mark_stage(0, running=False)
-        except Exception as e:
-            mark_stage_error(0, e)
-            pipeline_failed = True
-
-        # ── Stage 2: PDF → Images ─────────────────────────────────────────
-        image_paths = []
-        if not pipeline_failed:
-            mark_stage(1, running=True)
-            try:
-                from preprocessing import pdf_to_images
-                image_paths = pdf_to_images(temp_path)
-                mark_stage(1, running=False)
-            except Exception as e:
-                mark_stage_error(1, e)
-                pipeline_failed = True
-
-        # ── Stage 3: OCR ──────────────────────────────────────────────────
-        all_raw_texts = []
-        if not pipeline_failed:
-            mark_stage(2, running=True)
-            try:
-                st.session_state.engine.load_ocr()
-                ocr_errors = []
-                for i, img_path in enumerate(image_paths):
-                    progress_bar.progress(
-                        int((2 / len(STAGES)) * 100) + int((i / max(len(image_paths), 1)) * (100 // len(STAGES))),
-                        text=f"OCR: reading page {i+1} of {len(image_paths)}…"
-                    )
-                    try:
-                        text, _ = st.session_state.engine.ocr_manager.extract_text(img_path)
-                    except Exception as page_err:
-                        text = ""
-                        ocr_errors.append(f"Page {i+1}: {type(page_err).__name__}: {page_err}")
-                    all_raw_texts.append({"page": i + 1, "text": text})
-                    st.session_state.engine.processed_pages.append({"page": i + 1, "text": text})
-
-                if ocr_errors:
-                    st.warning(f"⚠ OCR had issues on {len(ocr_errors)} page(s) — partial text extracted:")
-                    with st.expander("📋 Per-Page OCR Errors"):
-                        for err_msg in ocr_errors:
-                            st.code(err_msg, language="text")
-
-                mark_stage(2, running=False)
-            except Exception as e:
-                mark_stage_error(2, e)
-                pipeline_failed = True
-
-        # ── Stage 4: Semantic Chunking ────────────────────────────────────
-        all_chunks, all_page_nums = [], []
-        if not pipeline_failed:
-            mark_stage(3, running=True)
-            try:
-                for entry in all_raw_texts:
-                    chunks = [c.strip() for c in entry["text"].split(".") if len(c.strip()) > 10]
-                    all_chunks.extend(chunks)
-                    all_page_nums.extend([entry["page"]] * len(chunks))
-                if not all_chunks:
-                    raise ValueError("No text chunks produced. The PDF may be blank or OCR extracted nothing.")
-                mark_stage(3, running=False)
-            except Exception as e:
-                mark_stage_error(3, e)
-                pipeline_failed = True
-
-        # ── Stage 5: TF-IDF Training ──────────────────────────────────────
-        if not pipeline_failed:
-            mark_stage(4, running=True)
-            try:
-                st.session_state.engine.vector_engine.tfidf.fit_transform(all_chunks)
-                mark_stage(4, running=False)
-            except Exception as e:
-                mark_stage_error(4, e)
-                pipeline_failed = True
-
-        # ── Stage 6: Vector Indexing ──────────────────────────────────────
-        if not pipeline_failed:
-            mark_stage(5, running=True)
-            try:
-                for i in range(len(all_chunks)):
-                    st.session_state.engine.vector_engine.metadata.append({
-                        "text": all_chunks[i],
-                        "page": all_page_nums[i]
-                    })
-                mark_stage(5, running=False)
-            except Exception as e:
-                mark_stage_error(5, e)
-                pipeline_failed = True
-
-        # ── Stage 7: Final Status ─────────────────────────────────────────
-        if not pipeline_failed:
-            mark_stage(6, running=False)
-            st.session_state.processed = True
-            progress_bar.progress(100, text="✅ All stages complete!")
-            result_area.success(
-                f"🎉 **Ready!** Indexed **{len(all_chunks)} knowledge chunks** "
-                f"from **{len(image_paths)} pages** into your from-scratch vector engine."
-            )
+    with c_main:
+        st.title("Hi, Scholar! 👋")
+        st.markdown("Your neural vault is active and ready.")
+        
+        # Stats Grid - More Compact
+        st.markdown('<div class="stats-container">', unsafe_allow_html=True)
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.markdown(f'<div class="stats-card"><div class="stats-value">{len(st.session_state.engine.processed_pages)}</div><div class="stats-label">Pages</div></div>', unsafe_allow_html=True)
+        with s2:
+            st.markdown(f'<div class="stats-card"><div class="stats-value">{len(st.session_state.chat_history)}</div><div class="stats-label">Queries</div></div>', unsafe_allow_html=True)
+        with s3:
+            st.markdown(f'<div class="stats-card"><div class="stats-value">{len(st.session_state.flashcards)}</div><div class="stats-label">Cards</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        if st.session_state.processed:
+            st.success(f"**Live Document:** {st.session_state.active_filename}")
         else:
-            progress_bar.progress(0, text="❌ Pipeline stopped due to error above")
-            result_area.error(
-                "Pipeline failed. Fix the error shown above then click **Reset Session** in the sidebar and re-upload the PDF."
-            )
+            st.warning("No notes uploaded yet. Check the **Vault** tab.")
             
-    if st.session_state.processed:
-        if st.button("📋 Generate Study Summary", use_container_width=True):
-            with st.spinner("Generating summary via local LLM..."):
-                full_text = " ".join([p['text'] for p in st.session_state.engine.processed_pages])
-                if full_text.strip():
-                    summary = st.session_state.engine.get_summary(full_text)
-                    st.info(summary)
-                else:
-                    st.warning("No text extracted yet.")
+    with c_side:
+        st.markdown("### ⚡ Quick Actions")
+        if st.button("💬 Jump to Chat", use_container_width=True):
+            # We'd need state triggers for tab switching, 
+            # for now let's use labels
+            st.info("Switch to the 'Study AI' tab above.")
+        if st.button("🎯 Take a Quiz", use_container_width=True):
+            st.info("Switch to the 'Practice' tab above.")
 
-        if st.button("📄 Export Study Report", use_container_width=True):
-            if not st.session_state.chat_history:
-                st.warning("Ask some questions first before exporting the report.")
+with tabs[1]:
+    v_col1, v_col2 = st.columns([1, 1.5])
+    
+    with v_col1:
+        st.subheader("🛠 Vault Control")
+        
+        # Reset Logic
+        if st.session_state.get('reset_vault'):
+            st.session_state.processed = False
+            st.session_state.active_filename = None
+            st.session_state.chat_history = []
+            st.session_state.reset_vault = False
+            st.rerun()
+
+        if not st.session_state.processed:
+            st.markdown("Select a handwritten PDF to begin analysis.")
+            # Use a more prominent label
+            uploaded_file = st.file_uploader("Drop PDF here", type=["pdf"], key="pdf_main_uploader")
+            
+            if uploaded_file is not None:
+                st.session_state.active_filename = uploaded_file.name
+                
+                # Immediate processing button
+                if st.button("🚀 Process & Index Document", type="primary", use_container_width=True):
+                    try:
+                        with st.status("🛠 Pipeline: Building Knowledge Vault...", expanded=True) as status:
+                            st.write("💾 Saving file contents...")
+                            temp_path = "data/input_notes.pdf"
+                            with open(temp_path, "wb") as f:
+                                f.write(uploaded_file.getbuffer())
+                            
+                            st.write("📸 Page Generation...")
+                            from preprocessing import pdf_to_images
+                            pdf_to_images(temp_path)
+                            
+                            st.write("👁️ Running OCR (this may take a minute)...")
+                            st.session_state.engine.process_pdf(temp_path)
+                            
+                            st.session_state.processed = True
+                            status.update(label="✅ Ready!", state="complete", expanded=False)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Analysis Failed: {str(e)}")
+                        st.info("Ensure the PDF is not password protected and PaddleOCR models are accessible.")
+        else:
+            st.success(f"**Indexed:** {st.session_state.active_filename}")
+            if st.button("📁 Load Different File", use_container_width=True):
+                st.session_state.reset_vault = True
+                st.rerun()
+        
+        st.divider()
+        if st.session_state.processed:
+            st.markdown("#### 📖 Page Selector")
+            num_pages = len(st.session_state.engine.processed_pages)
+            p_col1, p_col2 = st.columns(2)
+            with p_col1:
+                st.session_state.view_page = st.number_input("Page", 1, num_pages, st.session_state.view_page)
+            with p_col2:
+                zoom = st.slider("Zoom", 400, 1600, 900)
+
+    with v_col2:
+        st.subheader("🖼 Document Preview")
+        if st.session_state.processed:
+            img_path = f"data/temp_images/page_{st.session_state.view_page}.png"
+            if os.path.exists(img_path):
+                st.image(img_path, width=zoom)
             else:
-                report_path = generate_pdf_report(st.session_state.chat_history)
-                with open(report_path, "rb") as f:
-                    st.download_button(
-                        "⬇️ Download PDF Report", f,
-                        file_name="NoteVault_Study_Report.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
+                st.info("Select a page to view preview.")
+        else:
+            st.info("Upload and process notes to see preview here.")
 
-        if st.button("📝 Download Extracted Notes (PDF)", use_container_width=True):
-            if not st.session_state.engine.processed_pages:
-                st.warning("No notes processed yet.")
-            else:
-                trans_path = generate_transcription_pdf(st.session_state.engine.processed_pages)
-                with open(trans_path, "rb") as f:
-                    st.download_button(
-                        "⬇️ Click to Download Transcription", 
-                        f,
-                        file_name="Extracted_Notes.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-
-with col2:
+with tabs[2]:
+    st.subheader("💬 Interactive Learning Assistant")
     if not st.session_state.processed:
-        st.header("Upload a PDF to explore features")
-        st.image("https://img.icons8.com/fluency/240/intelligence.png", width=200)
+        st.error("Please upload notes first.")
     else:
-        tab_chat, tab_quiz, tab_flash = st.tabs(["💬 Chat & Search", "📝 Quiz Generator", "🗂 Flashcards"])
+        for chat in st.session_state.chat_history:
+            st.markdown(f'<div class="chat-bubble user-msg">{chat["question"]}</div>', unsafe_allow_html=True)
+            conf = chat.get('confidence', 0)
+            conf_class = 'conf-high' if conf > 75 else ('conf-med' if conf > 40 else 'conf-low')
+            st.markdown(f"""
+                <div class="chat-bubble ai-msg">
+                    <span class="confidence-badge {conf_class}">Confidence: {conf}%</span><br>
+                    {chat['answer']}
+                </div>
+            """, unsafe_allow_html=True)
+            if chat.get('sources'):
+                with st.expander("📚 Sources"):
+                    for s in chat['sources']:
+                        st.markdown(f"**Page {s['page']}**: {s['text']}")
 
-        with tab_chat:
-            st.subheader("Chat Interface")
-            
-            # Display Chat History
-            for chat in st.session_state.chat_history:
-                with st.chat_message("user"):
-                    st.write(chat["question"])
-                with st.chat_message("assistant"):
-                    conf = chat.get("confidence", 0)
-                    st.markdown(f"<div class='confidence-meter'>Confidence: {conf}%</div>", unsafe_allow_html=True)
-                    st.write(chat["answer"])
-                    
-                    if chat.get("referenced_text"):
-                        st.markdown(f"<div class='ref-text'><b>Referenced Text:</b><br>\"{chat['referenced_text']}\"</div>", unsafe_allow_html=True)
-                    
-                    if chat.get("sources"):
-                        with st.expander("View Page Sources"):
-                            for s in chat["sources"]:
-                                st.markdown(f"<div class='source-box'><b>Page {s['page']}</b><br>{s['text']}</div>", unsafe_allow_html=True)
+        if prompt := st.chat_input("Ask anything about your notes..."):
+            st.session_state.engine.load_llm()
+            answer, sources, confidence, ref_text = st.session_state.engine.ask(prompt)
+            st.session_state.chat_history.append({
+                "question": prompt, "answer": answer, "sources": sources,
+                "confidence": confidence, "referenced_text": ref_text
+            })
+            st.rerun()
 
-            # User Input
-            if prompt := st.chat_input("Ask a question about your notes..."):
-                with st.chat_message("user"):
-                    st.write(prompt)
-                
-                with st.chat_message("assistant"):
-                    with st.spinner(f"Searching your from-scratch vector database..."):
-                        # Ensure LLM is loaded with the currently selected model
-                        st.session_state.engine.load_llm(model_id=model_choice)
-                        answer, sources, confidence, ref_text = st.session_state.engine.ask(prompt)
-                        
-                        st.markdown(f"<div class='confidence-meter'>Confidence: {confidence}%</div>", unsafe_allow_html=True)
-                        st.write(answer)
-                        
-                        if ref_text:
-                            st.markdown(f"<div class='ref-text'><b>Referenced Text:</b><br>\"{ref_text}\"</div>", unsafe_allow_html=True)
-                        
-                        if sources:
-                            with st.expander("View Page Sources"):
-                                for s in sources:
-                                    st.markdown(f"<div class='source-box'><b>Page {s['page']}</b><br>{s['text']}</div>", unsafe_allow_html=True)
-                
-                # Save to history
-                st.session_state.chat_history.append({
-                    "question": prompt,
-                    "answer": answer,
-                    "sources": sources,
-                    "confidence": confidence,
-                    "referenced_text": ref_text
-                })
-
-        with tab_quiz:
-            st.subheader("🎯 Study Quiz")
-            if st.button("✨ Generate 5 New Questions", type="primary"):
-                with st.spinner("Analyzing notes to create questions..."):
-                    st.session_state.quiz_data = st.session_state.engine.generate_quiz()
+with tabs[3]:
+    pt1, pt2 = st.tabs(["🎯 Quiz", "🗂 Flashcards"])
+    
+    with pt1:
+        st.subheader("🎯 Test Your Knowledge")
+        if not st.session_state.processed:
+            st.error("Upload notes first.")
+        else:
+            if st.button("✨ Generate Quiz", key="gen_q", type="primary"):
+                with st.spinner("Generating..."):
+                    raw = st.session_state.engine.generate_quiz()
+                    # (Parser logic condensed)
+                    questions = []
+                    for b in raw.split("---"):
+                        lines = [l.strip() for l in b.strip().split("\n") if l.strip()]
+                        if len(lines) >= 6:
+                            q_item = {"q": "", "options": {}, "correct": ""}
+                            for l in lines:
+                                if l.startswith("Q:"): q_item["q"] = l.replace("Q:", "").strip()
+                                elif l.startswith("A)"): q_item["options"]["A"] = l.replace("A)", "").strip()
+                                elif l.startswith("B)"): q_item["options"]["B"] = l.replace("B)", "").strip()
+                                elif l.startswith("C)"): q_item["options"]["C"] = l.replace("C)", "").strip()
+                                elif l.startswith("D)"): q_item["options"]["D"] = l.replace("D)", "").strip()
+                                elif l.startswith("Correct:"): q_item["correct"] = l.replace("Correct:", "").strip().upper()[:1]
+                            if q_item["q"] and q_item["correct"]: questions.append(q_item)
+                    st.session_state.quiz_data = questions
+                    st.session_state.quiz_results = {}
+                    st.rerun()
             
             if st.session_state.quiz_data:
-                st.markdown(st.session_state.quiz_data)
-                st.info("💡 Review the questions above. Can you identify the correct answers? Check the 'Correct' line for verification.")
+                for i, q in enumerate(st.session_state.quiz_data):
+                    st.markdown(f"**Q{i+1}: {q['q']}**")
+                    cols = st.columns(2)
+                    for idx, char in enumerate(["A", "B", "C", "D"]):
+                        if cols[idx % 2].button(f"{char}) {q['options'].get(char, '...')}", key=f"q{i}_{char}_t"):
+                            st.session_state.quiz_results[i] = char
+                            st.rerun()
+                    if i in st.session_state.quiz_results:
+                        if st.session_state.quiz_results[i] == q['correct']: st.success("Correct!")
+                        else: st.error(f"Correct answer: {q['correct']}")
+                    st.divider()
 
-        with tab_flash:
-            st.subheader("🗂 Flashcard Gallery")
-            if st.button("💎 Extract Key Terms"):
-                with st.spinner("Identifying key definitions..."):
+    with pt2:
+        st.subheader("🗂 Active Recall Flashcards")
+        if not st.session_state.processed:
+            st.error("Upload notes first.")
+        else:
+            if not st.session_state.flashcards:
+                if st.button("✨ Generate Cards", key="gen_f"):
                     st.session_state.flashcards = st.session_state.engine.extract_flashcards()
+                    st.rerun()
             
             if st.session_state.flashcards:
-                cols = st.columns(2)
-                for i, card in enumerate(st.session_state.flashcards):
-                    with cols[i % 2]:
-                        st.markdown(f"""
-                        <div class='flashcard'>
-                            <b style='color:#4CAF50'>{card['front']}</b>
-                            <hr style='margin:10px 0; border:0; border-top:1px solid #444'>
-                            <span style='font-size:0.9em'>{card['back']}</span>
+                card = st.session_state.flashcards[st.session_state.fc_index]
+                st.markdown(f"""
+                    <div class="flashcard-main">
+                        <div class="{'flashcard-term' if not st.session_state.fc_flipped else 'flashcard-def'}">
+                            {card['front'] if not st.session_state.fc_flipped else card['back']}
                         </div>
-                        """, unsafe_allow_html=True)
+                    </div>
+                """, unsafe_allow_html=True)
+                c1, c2, c3 = st.columns([1, 1, 1])
+                if c2.button("Flip Card", use_container_width=True, key="flip_t"):
+                    st.session_state.fc_flipped = not st.session_state.fc_flipped
+                    st.rerun()
+                if c1.button("⬅️ Prev", key="prev_f") and st.session_state.fc_index > 0:
+                    st.session_state.fc_index -= 1
+                    st.session_state.fc_flipped = False
+                    st.rerun()
+                if c3.button("Next ➡️", key="next_f") and st.session_state.fc_index < len(st.session_state.flashcards) - 1:
+                    st.session_state.fc_index += 1
+                    st.session_state.fc_flipped = False
+                    st.rerun()
+
+with tabs[4]:
+    st.subheader("⚙️ Session Controls")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.write("### 📄 Reporting")
+        if st.button("📥 Download PDF Study Report", use_container_width=True):
+            path = generate_pdf_report(st.session_state.chat_history)
+            with open(path, "rb") as f: st.download_button("Click to Download", f, "NoteVault_Report.pdf")
+    with c2:
+        st.write("### 🧠 Preferences")
+        running, models = _check_ollama()
+        if running:
+            choice = st.selectbox("LLM Model", models if models else ["mistral"])
+            st.session_state.engine.load_llm(choice)
+        else:
+            st.warning("Ollama not running. Fallback active.")
