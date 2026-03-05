@@ -520,9 +520,15 @@ with tabs[3]:
             st.error("Upload notes first.")
         else:
             if not st.session_state.flashcards:
-                if st.button("✨ Generate Cards", key="gen_f"):
-                    st.session_state.flashcards = st.session_state.engine.extract_flashcards()
-                    st.rerun()
+                if st.button("✨ Generate Cards", key="gen_f", type="primary"):
+                    with st.spinner("AI is extracting key concepts..."):
+                        cards = st.session_state.engine.extract_flashcards()
+                        if cards:
+                            st.session_state.flashcards = cards
+                            st.session_state.fc_index = 0
+                            st.rerun()
+                        else:
+                            st.error("AI couldn't find enough distinct terms to create cards. Try asking a question in Study AI first to verify text extraction.")
             if st.session_state.flashcards:
                 card = st.session_state.flashcards[st.session_state.fc_index]
                 st.markdown(f"""

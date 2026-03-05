@@ -5,6 +5,7 @@ from llm_scratch import LocalLLMScratch
 import os
 import sqlite3
 import json
+import re
 
 class NoteVaultScratchEngine:
     def __init__(self):
@@ -121,22 +122,38 @@ Notes: {full_text}</s>
 
     def extract_flashcards(self):
         if not self.processed_pages: return []
-        full_text = " ".join([p['text'] for p in self.processed_pages])[:3000]
+        full_text = " ".join([p['text'] for p in self.processed_pages])[:3500]
         self.load_llm()
         prompt = f"""<|system|>
-Extract 8 key terms and their definitions from the notes for flashcards.
-Format: Term | Definition
-One per line.</s>
+Extract 8 key terms and their definitions from the following notes.
+Format your response exactly like this:
+Term | Definition
+Term | Definition
+...
+Do not include any other text.</s>
 <|user|>
 Notes: {full_text}</s>
 <|assistant|>
 Flashcards:"""
         raw = self.llm.generate(prompt, max_new_tokens=800)
+        if not raw or raw.startswith("[Ollama error]") or raw.startswith("Model"):
+            return []
+            
         cards = []
         for line in raw.split("\n"):
-            if "|" in line:
-                term, b = line.split("|", 1)
-                cards.append({"front": term.strip(), "back": b.strip()})
+            line = re.sub(r'^\d+[\.\)]\s*', '', line.strip()) # Remove leading "1.", "1)" etc.
+            line = line.strip()
+            
+            # Match separators: |, :, -- or -
+            match = re.search(r'(\s*\|\s*|\s*:\s*|\s*--\s*|\s+-\s+)', line)
+            if match:
+                sep = match.group(1)
+                parts = line.split(sep, 1)
+                if len(parts) == 2:
+                    term, definition = parts[0].strip(), parts[1].strip()
+                    term = term.replace("Flashcards:", "").strip()
+                    if len(term) > 1 and len(definition) > 3:
+                        cards.append({"front": term, "back": definition})
         return cards
 
     def get_summary(self, full_text):
