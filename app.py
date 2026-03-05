@@ -47,6 +47,34 @@ st.markdown("""
         margin-bottom: 5px;
         border-left: 5px solid #4CAF50;
     }
+    .confidence-meter {
+        float: right;
+        background: #333;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+    }
+    .flashcard {
+        background: #2D2D39;
+        padding: 20px;
+        border-radius: 15px;
+        border: 2px solid #4CAF50;
+        text-align: center;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        margin: 10px 0;
+    }
+    .ref-text {
+        font-size: 0.9em;
+        color: #aaa;
+        font-style: italic;
+        background: #25252d;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -59,6 +87,10 @@ if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 if 'processed' not in st.session_state:
     st.session_state.processed = False
+if 'quiz_data' not in st.session_state:
+    st.session_state.quiz_data = None
+if 'flashcards' not in st.session_state:
+    st.session_state.flashcards = None
 
 # Sidebar
 with st.sidebar:
@@ -330,41 +362,87 @@ with col1:
                     )
 
 with col2:
-    st.header("Chat Interface")
-    
-    # Display Chat History
-    for chat in st.session_state.chat_history:
-        with st.chat_message("user"):
-            st.write(chat["question"])
-        with st.chat_message("assistant"):
-            st.write(chat["answer"])
-            if chat["sources"]:
-                with st.expander("View Sources"):
-                    for s in chat["sources"]:
-                        st.markdown(f"<div class='source-box'><b>Page {s['page']}</b><br>{s['text']}</div>", unsafe_allow_html=True)
+    if not st.session_state.processed:
+        st.header("Upload a PDF to explore features")
+        st.image("https://img.icons8.com/fluency/240/intelligence.png", width=200)
+    else:
+        tab_chat, tab_quiz, tab_flash = st.tabs(["💬 Chat & Search", "📝 Quiz Generator", "🗂 Flashcards"])
 
-    # User Input
-    if prompt := st.chat_input("Ask a question about your notes..."):
-        if not st.session_state.processed:
-            st.warning("Please upload a PDF first.")
-        else:
-            with st.chat_message("user"):
-                st.write(prompt)
+        with tab_chat:
+            st.subheader("Chat Interface")
             
-            with st.chat_message("assistant"):
-                with st.spinner(f"Thinking with {model_choice}..."):
-                    # Ensure LLM is loaded with the currently selected model
-                    st.session_state.engine.load_llm(model_id=model_choice)
-                    answer, sources = st.session_state.engine.ask(prompt)
-                    st.write(answer)
-                    if sources:
-                        with st.expander("View Sources"):
-                            for s in sources:
+            # Display Chat History
+            for chat in st.session_state.chat_history:
+                with st.chat_message("user"):
+                    st.write(chat["question"])
+                with st.chat_message("assistant"):
+                    conf = chat.get("confidence", 0)
+                    st.markdown(f"<div class='confidence-meter'>Confidence: {conf}%</div>", unsafe_allow_html=True)
+                    st.write(chat["answer"])
+                    
+                    if chat.get("referenced_text"):
+                        st.markdown(f"<div class='ref-text'><b>Referenced Text:</b><br>\"{chat['referenced_text']}\"</div>", unsafe_allow_html=True)
+                    
+                    if chat.get("sources"):
+                        with st.expander("View Page Sources"):
+                            for s in chat["sources"]:
                                 st.markdown(f"<div class='source-box'><b>Page {s['page']}</b><br>{s['text']}</div>", unsafe_allow_html=True)
+
+            # User Input
+            if prompt := st.chat_input("Ask a question about your notes..."):
+                with st.chat_message("user"):
+                    st.write(prompt)
+                
+                with st.chat_message("assistant"):
+                    with st.spinner(f"Searching your from-scratch vector database..."):
+                        # Ensure LLM is loaded with the currently selected model
+                        st.session_state.engine.load_llm(model_id=model_choice)
+                        answer, sources, confidence, ref_text = st.session_state.engine.ask(prompt)
+                        
+                        st.markdown(f"<div class='confidence-meter'>Confidence: {confidence}%</div>", unsafe_allow_html=True)
+                        st.write(answer)
+                        
+                        if ref_text:
+                            st.markdown(f"<div class='ref-text'><b>Referenced Text:</b><br>\"{ref_text}\"</div>", unsafe_allow_html=True)
+                        
+                        if sources:
+                            with st.expander("View Page Sources"):
+                                for s in sources:
+                                    st.markdown(f"<div class='source-box'><b>Page {s['page']}</b><br>{s['text']}</div>", unsafe_allow_html=True)
+                
+                # Save to history
+                st.session_state.chat_history.append({
+                    "question": prompt,
+                    "answer": answer,
+                    "sources": sources,
+                    "confidence": confidence,
+                    "referenced_text": ref_text
+                })
+
+        with tab_quiz:
+            st.subheader("🎯 Study Quiz")
+            if st.button("✨ Generate 5 New Questions", type="primary"):
+                with st.spinner("Analyzing notes to create questions..."):
+                    st.session_state.quiz_data = st.session_state.engine.generate_quiz()
             
-            # Save to history
-            st.session_state.chat_history.append({
-                "question": prompt,
-                "answer": answer,
-                "sources": sources
-            })
+            if st.session_state.quiz_data:
+                st.markdown(st.session_state.quiz_data)
+                st.info("💡 Review the questions above. Can you identify the correct answers? Check the 'Correct' line for verification.")
+
+        with tab_flash:
+            st.subheader("🗂 Flashcard Gallery")
+            if st.button("💎 Extract Key Terms"):
+                with st.spinner("Identifying key definitions..."):
+                    st.session_state.flashcards = st.session_state.engine.extract_flashcards()
+            
+            if st.session_state.flashcards:
+                cols = st.columns(2)
+                for i, card in enumerate(st.session_state.flashcards):
+                    with cols[i % 2]:
+                        st.markdown(f"""
+                        <div class='flashcard'>
+                            <b style='color:#4CAF50'>{card['front']}</b>
+                            <hr style='margin:10px 0; border:0; border-top:1px solid #444'>
+                            <span style='font-size:0.9em'>{card['back']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
