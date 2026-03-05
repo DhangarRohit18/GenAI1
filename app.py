@@ -171,36 +171,32 @@ st.markdown(f"""
     }}
     
     .stTabs [data-baseweb="tab-list"] {{
-        gap: 60px !important;
+        gap: 30px !important;
         background-color: transparent !important;
-        padding: 1rem 2rem !important;
-        border-bottom: 3px solid var(--border-color) !important;
-        margin-bottom: 4rem !important;
-        display: flex !important;
-        justify-content: center !important;
+        padding: 0.5rem 1rem !important;
+        border-bottom: 2px solid var(--border-color) !important;
+        margin-bottom: 2rem !important;
     }}
 
     .stTabs [data-baseweb="tab"] {{
-        height: 120px !important;
-        min-width: 250px !important;
+        height: 60px !important;
+        min-width: unset !important;
         white-space: pre !important;
         background-color: transparent !important;
         border: none !important;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        transition: all 0.3s ease !important;
     }}
 
     .stTabs [data-baseweb="tab"] p {{
-        font-size: 2.5rem !important;
-        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        font-weight: 500 !important;
         color: var(--text-secondary) !important;
         margin: 0 !important;
     }}
 
     .stTabs [data-baseweb="tab"]:hover {{
-        transform: scale(1.1) translateY(-5px) !important;
+        transform: none !important;
+        color: #4A6CF7 !important;
     }}
     
     .stTabs [data-baseweb="tab"]:hover p {{
@@ -209,11 +205,11 @@ st.markdown(f"""
 
     .stTabs [aria-selected="true"] p {{
         color: #4A6CF7 !important;
-        font-weight: 900 !important;
+        font-weight: 700 !important;
     }}
     
     .stTabs [aria-selected="true"] {{
-        border-bottom: 5px solid #4A6CF7 !important;
+        border-bottom: 3px solid #4A6CF7 !important;
     }}
     
     .user-msg {{
