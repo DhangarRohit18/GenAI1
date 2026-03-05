@@ -293,17 +293,6 @@ with col1:
             )
             
     if st.session_state.processed:
-        if st.button("🧠 Run Custom CNN Training Demo", use_container_width=True):
-            with st.spinner("Training Custom CNN from Scratch with PyTorch..."):
-                import subprocess
-                result = subprocess.run(
-                    ["python", "train_demo.py"],
-                    capture_output=True, text=True, cwd="e:/GenHack"
-                )
-                st.success("Custom CNN Model Training Complete!")
-                if result.stdout:
-                    st.code(result.stdout)
-
         if st.button("📋 Generate Study Summary", use_container_width=True):
             with st.spinner("Generating summary via local LLM..."):
                 full_text = " ".join([p['text'] for p in st.session_state.engine.processed_pages])
