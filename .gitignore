@@ -19,3 +19,8 @@ _write_llm.py
 # OS
 .DS_Store
 Thumbs.db
+
+# Data
+data/*.db
+data/*.pdf
+data/*.pth
