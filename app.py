@@ -540,7 +540,16 @@ with tabs[4]:
         st.write("### 📄 Reporting")
         if st.button("📥 Download PDF Study Report", use_container_width=True):
             path = generate_pdf_report(st.session_state.chat_history)
-            with open(path, "rb") as f: st.download_button("Click to Download", f, "NoteVault_Report.pdf")
+            with open(path, "rb") as f: st.download_button("Click to Download Report", f, "NoteVault_Report.pdf")
+        
+        st.divider()
+        
+        if st.button("📝 Download Transcribed Notes (PDF)", use_container_width=True):
+            if st.session_state.processed:
+                path = generate_transcription_pdf(st.session_state.engine.processed_pages)
+                with open(path, "rb") as f: st.download_button("Click to Download Transcription", f, "NoteVault_Transcription.pdf")
+            else:
+                st.error("No notes indexed yet.")
     with c2:
         st.write("### 🧠 Preferences")
         running, models = _check_ollama()
