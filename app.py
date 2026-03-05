@@ -162,35 +162,36 @@ st.markdown(f"""
         .sidebar-brand {{ font-size: 1.2rem; }}
         .main-container {{ padding: 1rem; }}
         .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px !important;
+            gap: 20px !important;
         }}
         .stTabs [data-baseweb="tab"] {{
-            padding: 8px 12px !important;
-            font-size: 14px !important;
+            padding: 10px 15px !important;
+            font-size: 18px !important;
         }}
     }}
     
     .stTabs [data-baseweb="tab-list"] {{
-        gap: 24px;
+        gap: 50px;
         background-color: transparent !important;
         padding: 0 1rem;
         border-bottom: 2px solid var(--border-color);
-        margin-bottom: 2rem;
+        margin-bottom: 3.5rem;
     }}
 
     .stTabs [data-baseweb="tab"] {{
-        height: 50px;
+        height: 100px;
         white-space: pre;
         background-color: transparent !important;
         border: none !important;
         color: var(--text-secondary) !important;
-        font-weight: 500 !important;
-        font-size: 16px !important;
-        transition: all 0.3s ease !important;
+        font-weight: 700 !important;
+        font-size: 28px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }}
 
     .stTabs [data-baseweb="tab"]:hover {{
         color: #4A6CF7 !important;
+        transform: scale(1.05);
     }}
 
     .stTabs [aria-selected="true"] {{
